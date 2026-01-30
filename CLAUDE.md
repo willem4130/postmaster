@@ -85,15 +85,27 @@ postmaster/
 3. Place in the appropriate folder
 4. Import types from `shared/types/` when needed across processes
 
+## Code Quality - Zero Tolerance
+
+After editing ANY file, run:
+
+```bash
+npm run typecheck        # TypeScript errors - fix ALL before continuing
+npm run lint             # ESLint warnings - fix ALL before continuing
+```
+
+If the dev server crashes or shows errors:
+1. Read the error output carefully
+2. Fix ALL errors before continuing
+3. Restart with `npm run dev` if needed
+
 ## Key Commands
 
 ```bash
 # Development
 npm run dev              # Start Electron + Vite dev server
 npm run build            # Build for production
-
-# Type checking
-npm run typecheck        # Run TypeScript type check
+npm run typecheck        # TypeScript type check (run after every edit!)
 
 # Database
 npm run db:generate      # Generate Drizzle migrations
@@ -103,12 +115,10 @@ npm run db:studio        # Open Drizzle Studio
 # Prisma (Cloud)
 npm run prisma:generate  # Generate Prisma client
 npm run prisma:push      # Push schema to PostgreSQL
-npm run prisma:studio    # Open Prisma Studio
 
 # Code quality
 npm run lint             # ESLint
 npm run format           # Prettier format
-npm run format:check     # Check formatting
 ```
 
 ## Email Providers
@@ -122,11 +132,17 @@ npm run format:check     # Check formatting
 
 ## AI Features (Claude)
 
+**Models used:**
+- Fast (single emails): `claude-3-5-haiku-20241022`
+- Smart (summaries, bulk): `claude-sonnet-4-20250514`
+
+**Features:**
 - **Categorization**: Auto-categorize emails (work, personal, finance, etc.)
 - **Priority Scoring**: 0-100 priority score with urgency level
 - **Summarization**: Thread summaries with key points & action items
 - **Entity Extraction**: Dates, amounts, contacts, organizations
 - **Reply Suggestions**: AI-generated reply drafts
+- **Bulk Analysis**: Multi-select emails (⌘+click) → AI Analyze for executive summary, category breakdown, action items
 
 ## Environment Variables
 

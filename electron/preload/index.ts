@@ -88,6 +88,31 @@ const electronAPI = {
     categorize: (threadId: string) => ipcRenderer.invoke(IPC_CHANNELS.AI_CATEGORIZE, threadId),
     summarize: (threadId: string) => ipcRenderer.invoke(IPC_CHANNELS.AI_SUMMARIZE, threadId),
     suggestReply: (threadId: string, tone?: string) => ipcRenderer.invoke(IPC_CHANNELS.AI_SUGGEST_REPLY, threadId, tone),
+    priority: (threadId: string) => ipcRenderer.invoke(IPC_CHANNELS.AI_PRIORITY, threadId),
+    extractEntities: (threadId: string) => ipcRenderer.invoke(IPC_CHANNELS.AI_EXTRACT_ENTITIES, threadId),
+    bulkAnalyze: (options: {
+      threadIds?: string[]
+      domain?: string
+      dateRange?: { start: string; end: string }
+      preset?: 'today' | 'yesterday' | 'last7days' | 'last30days'
+    }) => ipcRenderer.invoke(IPC_CHANNELS.AI_BULK_ANALYZE, options),
+    onBulkProgress: (callback: (progress: {
+      current: number
+      total: number
+      threadId: string
+      status: 'processing' | 'completed' | 'error'
+      error?: string
+    }) => void) => {
+      const subscription = (_event: Electron.IpcRendererEvent, progress: unknown) => callback(progress as {
+        current: number
+        total: number
+        threadId: string
+        status: 'processing' | 'completed' | 'error'
+        error?: string
+      })
+      ipcRenderer.on(IPC_CHANNELS.AI_BULK_PROGRESS, subscription)
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.AI_BULK_PROGRESS, subscription)
+    },
   },
 
   // OAuth

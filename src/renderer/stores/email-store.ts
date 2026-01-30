@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { Account, Thread, Email, Tag, Perspective } from '@/shared/types/email'
+import type { Account, Thread, Tag, Perspective } from '@/shared/types/email'
+import type { BulkAnalysisResult, BulkAnalysisProgress } from '@/shared/types/ai'
 
 interface EmailState {
   // Data
@@ -15,6 +16,13 @@ interface EmailState {
 
   // Selection
   selectedThreadIds: Set<string>
+  isMultiSelectMode: boolean
+
+  // Bulk Analysis
+  bulkAnalysisResult: BulkAnalysisResult | null
+  bulkAnalysisProgress: BulkAnalysisProgress | null
+  isBulkAnalyzing: boolean
+  showBulkInsights: boolean
 
   // Actions
   setAccounts: (accounts: Account[]) => void
@@ -46,6 +54,14 @@ interface EmailState {
   deselectThread: (threadId: string) => void
   clearSelection: () => void
   selectAll: () => void
+  toggleMultiSelectMode: () => void
+  toggleThreadSelection: (threadId: string) => void
+
+  // Bulk Analysis
+  setBulkAnalysisResult: (result: BulkAnalysisResult | null) => void
+  setBulkAnalysisProgress: (progress: BulkAnalysisProgress | null) => void
+  setIsBulkAnalyzing: (analyzing: boolean) => void
+  setShowBulkInsights: (show: boolean) => void
 
   // Async actions
   loadAccounts: () => Promise<void>
@@ -66,6 +82,11 @@ export const useEmailStore = create<EmailState>((set, get) => ({
   syncingAccounts: new Set(),
   lastSyncError: null,
   selectedThreadIds: new Set(),
+  isMultiSelectMode: false,
+  bulkAnalysisResult: null,
+  bulkAnalysisProgress: null,
+  isBulkAnalyzing: false,
+  showBulkInsights: false,
 
   // Account actions
   setAccounts: (accounts) => set({ accounts }),
@@ -155,6 +176,27 @@ export const useEmailStore = create<EmailState>((set, get) => ({
     set((state) => ({
       selectedThreadIds: new Set(state.threads.map((t) => t.id)),
     })),
+  toggleMultiSelectMode: () =>
+    set((state) => ({
+      isMultiSelectMode: !state.isMultiSelectMode,
+      selectedThreadIds: state.isMultiSelectMode ? new Set() : state.selectedThreadIds,
+    })),
+  toggleThreadSelection: (threadId) =>
+    set((state) => {
+      const newSet = new Set(state.selectedThreadIds)
+      if (newSet.has(threadId)) {
+        newSet.delete(threadId)
+      } else {
+        newSet.add(threadId)
+      }
+      return { selectedThreadIds: newSet }
+    }),
+
+  // Bulk Analysis
+  setBulkAnalysisResult: (result) => set({ bulkAnalysisResult: result }),
+  setBulkAnalysisProgress: (progress) => set({ bulkAnalysisProgress: progress }),
+  setIsBulkAnalyzing: (analyzing) => set({ isBulkAnalyzing: analyzing }),
+  setShowBulkInsights: (show) => set({ showBulkInsights: show }),
 
   // Async actions
   loadAccounts: async () => {

@@ -47,6 +47,8 @@ export const IPC_CHANNELS = {
   AI_PRIORITY: 'ai:priority',
   AI_EXTRACT_ENTITIES: 'ai:extract-entities',
   AI_SUGGEST_REPLY: 'ai:suggest-reply',
+  AI_BULK_ANALYZE: 'ai:bulk-analyze',
+  AI_BULK_PROGRESS: 'ai:bulk-progress',
 
   // OAuth
   OAUTH_START_MICROSOFT: 'oauth:start:microsoft',
