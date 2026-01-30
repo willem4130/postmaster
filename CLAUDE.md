@@ -33,49 +33,57 @@ npm run dev
 
 ```
 postmaster/
-├── electron/
-│   ├── main/                    # Electron main process
-│   │   ├── index.ts             # Main entry
-│   │   ├── window-manager.ts    # BrowserWindow management
-│   │   ├── ipc-handlers.ts      # IPC handlers (accounts, emails, sync, AI)
-│   │   └── menu.ts              # Native menu
-│   ├── preload/
-│   │   └── index.ts             # Context bridge API
-│   └── shared/
-│       └── ipc-channels.ts      # IPC channel constants
+├── electron/                    # Electron process code (Node.js runtime)
+│   ├── main/                    # Main process entry & window management
+│   ├── preload/                 # Context bridge (secure IPC exposure)
+│   └── shared/                  # Shared constants between processes
 ├── src/
-│   ├── main/                    # Main process modules
-│   │   ├── database/
-│   │   │   ├── sqlite.ts        # SQLite connection (better-sqlite3)
-│   │   │   ├── schema.ts        # Drizzle schema
-│   │   │   └── sync-manager.ts  # Local ↔ Cloud sync
-│   │   ├── email/
-│   │   │   └── providers/
-│   │   │       ├── base-provider.ts      # Abstract provider
-│   │   │       ├── microsoft-provider.ts # Microsoft Graph API
-│   │   │       ├── gmail-provider.ts     # Gmail API
-│   │   │       └── imap-provider.ts      # Generic IMAP
-│   │   └── ai/
-│   │       └── claude-client.ts # Anthropic SDK integration
-│   ├── renderer/                # React app
-│   │   ├── App.tsx              # Main app component
-│   │   ├── main.tsx             # Entry point
+│   ├── main/                    # Main process business logic
+│   │   ├── ai/                  # Claude SDK integration
+│   │   ├── database/            # SQLite + Drizzle ORM
+│   │   ├── email/providers/     # Email provider implementations
+│   │   ├── services/            # Main process services (future)
+│   │   └── workflows/           # Automation rules engine (future)
+│   ├── renderer/                # React app (browser runtime)
 │   │   ├── components/
-│   │   │   ├── ui/              # shadcn/ui components
-│   │   │   ├── email/           # Email components
-│   │   │   ├── sidebar/         # Sidebar navigation
-│   │   │   └── settings/        # Settings modals
-│   │   ├── stores/
-│   │   │   ├── email-store.ts   # Email state (Zustand)
-│   │   │   └── ui-store.ts      # UI state
-│   │   └── lib/
-│   │       └── utils.ts         # Utilities (cn, formatDate, etc.)
+│   │   │   ├── ui/              # Generic UI (shadcn/ui)
+│   │   │   ├── email/           # Email feature components
+│   │   │   ├── sidebar/         # Navigation components
+│   │   │   └── settings/        # Settings feature
+│   │   ├── hooks/               # Custom React hooks
+│   │   ├── services/            # API wrappers for IPC calls
+│   │   ├── stores/              # Zustand state stores
+│   │   ├── lib/                 # Pure utilities
+│   │   ├── styles/              # Global CSS
+│   │   └── types/               # Renderer-specific types
 │   └── shared/
-│       └── types/
-│           └── email.ts         # Shared TypeScript types
-└── prisma/
-    └── schema.prisma            # PostgreSQL schema (cloud sync)
+│       └── types/               # Types shared across main & renderer
+├── prisma/                      # PostgreSQL schema (cloud sync)
+└── build/                       # Electron build configuration
 ```
+
+## Organization Rules
+
+**Layer boundaries - NEVER cross these:**
+
+| Folder | Contains | NEVER contains |
+|--------|----------|----------------|
+| `electron/` | Process entry, IPC setup | Business logic |
+| `src/main/` | Node.js backend logic | React, browser APIs |
+| `src/renderer/` | React UI code | Node.js APIs, direct DB |
+| `components/ui/` | Generic UI components | Business logic, API calls |
+| `components/[feature]/` | Feature-specific UI | Direct database access |
+| `hooks/` | Custom React hooks | UI components |
+| `stores/` | Zustand state | API calls, side effects |
+| `services/` | IPC wrappers, API calls | UI components |
+| `lib/` | Pure utility functions | React hooks, state |
+| `shared/types/` | Type definitions only | Implementation code |
+
+**When creating new files:**
+1. Determine if it runs in Main (Node.js) or Renderer (Browser)
+2. Pick the correct layer (UI → logic → data)
+3. Place in the appropriate folder
+4. Import types from `shared/types/` when needed across processes
 
 ## Key Commands
 
