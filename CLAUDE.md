@@ -4,7 +4,15 @@ Modern macOS email client built with Electron, supporting Microsoft 365, Gmail, 
 
 **Stack**: Electron + Vite + React 19 + TypeScript + shadcn/ui + SQLite (Drizzle) + PostgreSQL (Prisma) + Claude AI
 
+**Repository**: https://github.com/willem4130/postmaster
+
 ## Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/willem4130/postmaster.git
+cd postmaster
+```
 
 ```bash
 # Install dependencies
@@ -194,3 +202,30 @@ Email Provider (MS/Gmail/IMAP)
 - **TanStack Query**: Server state caching & background sync
 - **Zustand**: Simple client state management
 - **shadcn/ui**: Modern, accessible, dark-mode-ready components
+
+## Git Workflow
+
+**Main branch**: `main`
+**Remote**: `origin` → https://github.com/willem4130/postmaster.git
+
+### Branch Naming Convention
+- `feat/<name>` - New features
+- `fix/<name>` - Bug fixes
+- `chore/<name>` - Maintenance tasks
+- `refactor/<name>` - Code refactoring
+
+### Available Commands
+- `/fix` - Run typechecking, linting, and auto-fix issues
+- `/commit` - Run checks, commit with AI message, and push
+- `/update-app` - Update dependencies and fix deprecations
+- `/branch` - Create a new feature/fix branch
+
+### Commit Message Format
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+```
