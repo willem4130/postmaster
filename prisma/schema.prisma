@@ -1,0 +1,385 @@
+// Prisma schema for PostgreSQL (Neon) - Cloud sync
+// This schema mirrors the local SQLite schema for cross-device sync
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================
+// User & Authentication
+// ============================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts     Account[]
+  tags         Tag[]
+  perspectives Perspective[]
+  rules        Rule[]
+  settings     UserSettings?
+}
+
+model UserSettings {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  theme            String @default("dark")
+  defaultView      String @default("inbox")
+  syncInterval     Int    @default(5) // minutes
+  notifyNewEmails  Boolean @default(true)
+  notifySound      Boolean @default(true)
+  blockRemoteImages Boolean @default(false)
+  blockTrackingPixels Boolean @default(true)
+  enableAI         Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// Email Accounts
+// ============================================
+
+enum AccountProvider {
+  MICROSOFT_365
+  MICROSOFT_PERSONAL
+  GMAIL
+  IMAP
+}
+
+enum SyncStatus {
+  NEVER_SYNCED
+  SYNCING
+  SYNCED
+  ERROR
+}
+
+model Account {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        AccountProvider
+  email           String
+  displayName     String?
+
+  // OAuth tokens (encrypted at rest)
+  accessToken     String?
+  refreshToken    String?
+  tokenExpiresAt  DateTime?
+
+  // IMAP credentials (encrypted at rest)
+  imapHost        String?
+  imapPort        Int?
+  imapUsername    String?
+  imapPassword    String?
+  smtpHost        String?
+  smtpPort        Int?
+  smtpUsername    String?
+  smtpPassword    String?
+
+  // Sync state
+  lastSyncAt      DateTime?
+  syncCursor      String?
+  syncStatus      SyncStatus @default(NEVER_SYNCED)
+
+  // Settings
+  color           String     @default("#6366f1")
+  isActive        Boolean    @default(true)
+  position        Int        @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  threads  Thread[]
+  folders  Folder[]
+
+  @@index([userId])
+  @@index([email])
+}
+
+// ============================================
+// Folders
+// ============================================
+
+enum FolderType {
+  INBOX
+  SENT
+  DRAFTS
+  TRASH
+  SPAM
+  ARCHIVE
+  CUSTOM
+}
+
+model Folder {
+  id          String     @id @default(cuid())
+  accountId   String
+  account     Account    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  externalId  String
+  name        String
+  displayName String?
+  type        FolderType @default(CUSTOM)
+  parentId    String?
+  totalCount  Int        @default(0)
+  unreadCount Int        @default(0)
+  position    Int        @default(0)
+
+  @@index([accountId])
+}
+
+// ============================================
+// Threads & Emails
+// ============================================
+
+model Thread {
+  id                String   @id @default(cuid())
+  externalId        String
+  accountId         String
+  account           Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  subject           String
+  snippet           String?
+  participantEmails String[] // Array of email addresses
+
+  // Status flags
+  inboxStatus    Boolean @default(true)
+  sentStatus     Boolean @default(false)
+  draftStatus    Boolean @default(false)
+  starredStatus  Boolean @default(false)
+  archivedStatus Boolean @default(false)
+  trashedStatus  Boolean @default(false)
+  spamStatus     Boolean @default(false)
+
+  // Computed
+  unreadCount    Int     @default(0)
+  messageCount   Int     @default(1)
+  hasAttachments Boolean @default(false)
+  lastMessageAt  DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  emails     Email[]
+  threadTags ThreadTag[]
+  aiMetadata ThreadAIMetadata?
+
+  @@index([accountId])
+  @@index([lastMessageAt(sort: Desc)])
+  @@index([inboxStatus])
+  @@index([starredStatus])
+}
+
+model Email {
+  id         String  @id @default(cuid())
+  externalId String
+  threadId   String
+  thread     Thread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  // Addresses
+  fromAddress      String
+  fromName         String?
+  toAddresses      Json // Array of { address, name }
+  ccAddresses      Json? // Array of { address, name }
+  bccAddresses     Json? // Array of { address, name }
+  replyToAddresses Json? // Array of { address, name }
+
+  // Content
+  subject  String
+  bodyText String?
+  bodyHtml String?
+  snippet  String?
+
+  // Headers
+  messageId  String?
+  inReplyTo  String?
+  references String? // Space-separated message IDs
+
+  // Status
+  isRead    Boolean @default(false)
+  isStarred Boolean @default(false)
+  isDraft   Boolean @default(false)
+  isDeleted Boolean @default(false)
+
+  // Timestamps
+  sentAt     DateTime
+  receivedAt DateTime
+  createdAt  DateTime @default(now())
+
+  attachments Attachment[]
+
+  @@index([threadId])
+  @@index([sentAt(sort: Desc)])
+}
+
+model Attachment {
+  id          String  @id @default(cuid())
+  emailId     String
+  email       Email   @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  externalId  String?
+  filename    String
+  contentType String?
+  size        Int     @default(0)
+  contentId   String? // For inline attachments
+  isInline    Boolean @default(false)
+  localPath   String? // Path to cached file
+
+  @@index([emailId])
+}
+
+// ============================================
+// Tags & Organization
+// ============================================
+
+model Tag {
+  id       String  @id @default(cuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name     String
+  color    String  @default("#6366f1")
+  icon     String?
+  parentId String? // Hierarchical tags
+  position Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  threadTags ThreadTag[]
+
+  @@index([userId])
+}
+
+model ThreadTag {
+  id        String   @id @default(cuid())
+  threadId  String
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  tagId     String
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([threadId, tagId])
+  @@index([threadId])
+  @@index([tagId])
+}
+
+// ============================================
+// AI Metadata
+// ============================================
+
+model ThreadAIMetadata {
+  id       String @id @default(cuid())
+  threadId String @unique
+  thread   Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  // AI-generated fields
+  category           String?
+  categoryConfidence Float?
+  priorityScore      Int?
+  priorityReason     String?
+  summary            String?
+  actionItems        Json?   // Array of strings
+  extractedDates     Json?   // Array of { value, context }
+  extractedAmounts   Json?   // Array of { value, currency, context }
+  extractedContacts  Json?   // Array of { name, email, role }
+  suggestedReply     String?
+
+  processedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+}
+
+// ============================================
+// Perspectives (Custom Views)
+// ============================================
+
+enum ViewType {
+  list
+  kanban
+  mindmap
+}
+
+enum SortOrder {
+  asc
+  desc
+}
+
+model Perspective {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  icon      String?
+  color     String?
+  filters   Json      // { accounts: [], tags: [], status: [], etc. }
+  viewType  ViewType  @default(list)
+  sortBy    String    @default("date")
+  sortOrder SortOrder @default(desc)
+  position  Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ============================================
+// Rules (Automation)
+// ============================================
+
+model Rule {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  isActive        Boolean  @default(true)
+  conditions      Json     // { all: [...], any: [...] }
+  actions         Json     // [{ type: "addTag", params: {...} }]
+  priority        Int      @default(0)
+  lastTriggeredAt DateTime?
+  triggerCount    Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+// ============================================
+// Calendar Integration
+// ============================================
+
+enum CalendarProvider {
+  APPLE
+  MICROSOFT
+  GOOGLE
+}
+
+model CalendarEvent {
+  id               String           @id @default(cuid())
+  externalId       String
+  calendarProvider CalendarProvider
+
+  title       String
+  description String?
+  location    String?
+  startTime   DateTime
+  endTime     DateTime
+  isAllDay    Boolean  @default(false)
+  attendees   Json?    // Array of { email, name, status }
+
+  linkedThreadId String? // Created from email
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startTime])
+  @@index([linkedThreadId])
+}
