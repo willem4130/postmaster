@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { X, Send, Paperclip, Sparkles, ChevronDown, Trash2 } from 'lucide-react'
+import { Send, Paperclip, Sparkles, Trash2 } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
+import { RichTextEditor } from '../ui/editor/RichTextEditor'
 import { cn } from '@/renderer/lib/utils'
 import { useEmailStore } from '@/renderer/stores/email-store'
 import type { Thread, Email } from '@/shared/types/email'
@@ -35,21 +36,21 @@ export function EmailComposer({ mode, thread, emails, onClose }: EmailComposerPr
       setTo(latestEmail.fromAddress)
       setSubject(`Re: ${thread.subject.replace(/^Re:\s*/i, '')}`)
 
-      // Quote the original message
-      const quotedBody = `\n\n---\nOn ${new Date(latestEmail.sentAt).toLocaleString()}, ${
+      // Quote the original message in HTML format
+      const quotedBody = `<p><br></p><p>---</p><p>On ${new Date(latestEmail.sentAt).toLocaleString()}, ${
         latestEmail.fromName || latestEmail.fromAddress
-      } wrote:\n\n${latestEmail.bodyText || ''}`
+      } wrote:</p><blockquote>${latestEmail.bodyHtml || latestEmail.bodyText?.replace(/\n/g, '<br>') || ''}</blockquote>`
       setBody(quotedBody)
     } else if (mode === 'forward' && thread && emails?.length) {
       const latestEmail = emails[emails.length - 1]
       setSubject(`Fwd: ${thread.subject.replace(/^Fwd:\s*/i, '')}`)
 
-      // Format forwarded message
-      const forwardedBody = `\n\n---------- Forwarded message ----------\nFrom: ${
+      // Format forwarded message in HTML
+      const forwardedBody = `<p><br></p><p>---------- Forwarded message ----------</p><p>From: ${
         latestEmail.fromName || latestEmail.fromAddress
-      }\nDate: ${new Date(latestEmail.sentAt).toLocaleString()}\nSubject: ${latestEmail.subject}\n\n${
-        latestEmail.bodyText || ''
-      }`
+      }<br>Date: ${new Date(latestEmail.sentAt).toLocaleString()}<br>Subject: ${latestEmail.subject}</p><p>${
+        latestEmail.bodyHtml || latestEmail.bodyText?.replace(/\n/g, '<br>') || ''
+      }</p>`
       setBody(forwardedBody)
     }
   }, [mode, thread, emails])
@@ -83,7 +84,7 @@ export function EmailComposer({ mode, thread, emails, onClose }: EmailComposerPr
         bcc: bccAddresses,
         subject,
         body,
-        isHtml: false,
+        isHtml: true,
         replyToMessageId: mode === 'reply' && emails?.length ? emails[emails.length - 1].messageId || undefined : undefined,
       })
 
@@ -111,12 +112,12 @@ export function EmailComposer({ mode, thread, emails, onClose }: EmailComposerPr
 
   const applyAISuggestion = () => {
     if (aiSuggestion) {
-      setBody(aiSuggestion + body)
+      // Wrap AI suggestion in paragraph tags and prepend to body
+      const suggestionHtml = `<p>${aiSuggestion.replace(/\n/g, '</p><p>')}</p>`
+      setBody(suggestionHtml + body)
       setAISuggestion(null)
     }
   }
-
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId)
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -240,12 +241,12 @@ export function EmailComposer({ mode, thread, emails, onClose }: EmailComposerPr
           )}
 
           {/* Body */}
-          <div className="flex-1 overflow-auto">
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
+          <div className="flex-1 overflow-hidden">
+            <RichTextEditor
+              content={body}
+              onChange={setBody}
               placeholder="Write your message..."
-              className="w-full h-full p-4 resize-none bg-transparent text-sm focus:outline-none"
+              className="h-full border-0 rounded-none"
             />
           </div>
 
