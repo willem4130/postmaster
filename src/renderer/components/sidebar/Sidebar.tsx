@@ -29,7 +29,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed, onComposeClick, onSettingsClick, onAddAccountClick }: SidebarProps) {
-  const { currentView, currentAccountId, setCurrentView, setCurrentAccountId, toggleSidebar } = useUIStore()
+  const { currentView, currentAccountId, setCurrentView, setCurrentAccountId } = useUIStore()
   const { accounts, perspectives, syncing, syncAllAccounts, loadAccounts, loadPerspectives } = useEmailStore()
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set())
 
@@ -72,8 +72,8 @@ export function Sidebar({ collapsed, onComposeClick, onSettingsClick, onAddAccou
           collapsed ? 'w-16' : 'w-64'
         )}
       >
-        {/* Drag region for window controls */}
-        <div className="h-12 drag-region flex items-center px-4">
+        {/* Drag region for window controls - extra left padding for macOS traffic lights */}
+        <div className="h-12 drag-region flex items-center pl-20 pr-4">
           {!collapsed && (
             <span className="text-lg font-semibold no-drag">Postmaster</span>
           )}
@@ -292,7 +292,8 @@ function AccountItem({ account, collapsed, expanded, onToggle, isActive, onSelec
           </div>
           <span className="truncate text-sm">{account.displayName || account.email}</span>
         </div>
-        <button
+        <span
+          role="button"
           className="p-1 hover:bg-accent rounded"
           onClick={(e) => {
             e.stopPropagation()
@@ -304,7 +305,7 @@ function AccountItem({ account, collapsed, expanded, onToggle, isActive, onSelec
           ) : (
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           )}
-        </button>
+        </span>
       </Button>
 
       {expanded && (
