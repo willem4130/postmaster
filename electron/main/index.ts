@@ -1,7 +1,7 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { join } from 'path'
 import { createWindowManager } from './window-manager'
-import { registerIpcHandlers } from './ipc-handlers'
+import { registerIpcHandlers, setMainWindow } from './ipc-handlers'
 import { createMenu } from './menu'
 import { initDatabase } from '../../src/main/database/sqlite'
 
@@ -36,6 +36,9 @@ if (!gotTheLock) {
       }
       return { action: 'deny' }
     })
+
+    // Set main window reference for IPC handlers (bulk analysis progress)
+    setMainWindow(mainWindow)
 
     mainWindow.on('closed', () => {
       mainWindow = null
